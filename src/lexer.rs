@@ -2,7 +2,20 @@
 enum PostgresTk {
     SELECT,
     FROM,
+    WHERE,
+    INNER,
+    LEFT,
+    RIGHT,
+    JOIN,
+    AND,
+    GROUP,
+    HAVING,
+    ORDER,
+    BY,
     COMMA,
+    IS,
+    NOT,
+    NULL,
     IDENTIFIER(String),
 }
 
@@ -16,6 +29,17 @@ impl PostgresTk {
         match str.as_str() {
             "select" => Ok(PostgresTk::SELECT),
             "from" => Ok(PostgresTk::FROM),
+            "group" => Ok(PostgresTk::GROUP),
+            "having" => Ok(PostgresTk::HAVING),
+            "order" => Ok(PostgresTk::ORDER),
+            "where" => Ok(PostgresTk::WHERE),
+            "by" => Ok(PostgresTk::BY),
+            "join" => Ok(PostgresTk::JOIN),
+            "left" => Ok(PostgresTk::LEFT),
+            "right" => Ok(PostgresTk::RIGHT),
+            "is" => Ok(PostgresTk::IS),
+            "not" => Ok(PostgresTk::NOT),
+            "null" => Ok(PostgresTk::NULL),
             ident => Ok(PostgresTk::IDENTIFIER(ident.to_string())),
         }
     }
@@ -67,6 +91,7 @@ where
         let mut acc: Vec<char> = Vec::new();
         while let Some(ch) = self.curr_char {
             match ch {
+                '\n' | '\t' => {}
                 ',' => {
                     // Skip
                     pg_tokens.push(PostgresTk::new(acc)?);
@@ -135,6 +160,41 @@ fn test_column_selectors() {
         PostgresTk::IDENTIFIER("second_col".to_string()),
         PostgresTk::FROM,
         PostgresTk::IDENTIFIER("schema.table".to_string()),
+    ];
+
+    for (found, expected) in tks_.iter().zip(answers.iter()) {
+        assert_eq!(found, expected);
+    }
+}
+
+#[test]
+fn test_various_keywords() {
+    let input = String::from(
+        "SELECT first_col, second_col 
+        FROM schema.table 
+        WHERE first_col IS NOT NULL 
+        ORDER BY second_col;"
+    ).to_lowercase();
+    let with_indices = input.char_indices().map(|(i, c)| (i as u32, c));
+    let mut lexer = LexSQL::new(with_indices);
+    let tks = lexer.tokenize();
+    assert!(tks.is_ok());
+    let tks_ = tks.expect("");
+    let answers = vec![
+        PostgresTk::SELECT,
+        PostgresTk::IDENTIFIER("first_col".to_string()),
+        PostgresTk::COMMA,
+        PostgresTk::IDENTIFIER("second_col".to_string()),
+        PostgresTk::FROM,
+        PostgresTk::IDENTIFIER("schema.table".to_string()),
+        PostgresTk::WHERE,
+        PostgresTk::IDENTIFIER("first_col".to_string()),
+        PostgresTk::IS,
+        PostgresTk::NOT,
+        PostgresTk::NULL,
+        PostgresTk::ORDER,
+        PostgresTk::BY,
+        PostgresTk::IDENTIFIER("second_col".to_string()),
     ];
 
     for (found, expected) in tks_.iter().zip(answers.iter()) {
